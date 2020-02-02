@@ -1,61 +1,26 @@
 version: '2.1'
 
 volumes:
-
   pihole_config:
   dnsmasq_config:
-  duplicati_config:
-  dind_home:
+  dnscrypt_config:
 
 services:
-
-  # https://github.com/pi-hole/docker-pi-hole/
-  # https://hub.docker.com/r/pihole/pihole/
   pihole:
-    image: pihole/pihole:v4.0_armhf
-    ports:
-      - '80:80/tcp'
-      - '80:80/udp'
+    build: ./pihole
+    privileged: true
     volumes:
       - 'pihole_config:/etc/pihole'
       - 'dnsmasq_config:/etc/dnsmasq.d'
-    entrypoint: ['/bin/bash', '-c', 'echo "bind-interfaces" >> /etc/dnsmasq.conf; /s6-init']
+    dns:
+      - '127.0.0.1'
+      - '1.1.1.1'
     network_mode: host
 
-  # https://github.com/visibilityspots/dockerfile-cloudflared
-  # https://hub.docker.com/r/visibilityspots/cloudflared/
-  cloudflared:
-    image: visibilityspots/cloudflared:arm
-    ports:
-      - '1054:54/tcp'
-      - '1054:54/udp'
-
-  # https://github.com/klutchell/unbound-docker
-  # https://hub.docker.com/r/klutchell/unbound/
-  unbound:
-    image: klutchell/unbound:armhf
-    ports:
-      - '1053:53/tcp'
-      - '1053:53/udp'
-
-  # https://github.com/linuxserver/docker-duplicati-armhf
-  # https://hub.docker.com/r/lsioarmhf/duplicati/
-  duplicati:
-    image: lsioarmhf/duplicati
-    ports:
-      - '8200:8200/tcp'
+  # set pihole DNS1 and DNS2 service variables to 127.0.0.1#5053 to use dnscrypt-proxy for upstream DNS
+  dnscrypt-proxy:
+    build: ./dnscrypt-proxy
     volumes:
-      - 'pihole_config:/source/pihole_config:ro'
-      - 'dnsmasq_config:/source/dnsmasq_config:ro'
-      - 'dind_home:/source/dind_home:ro'
-      - 'duplicati_config:/config'
-  
-  # https://github.com/klutchell/dind
-  # https://cloud.docker.com/repository/docker/klutchell/dind
-  dind:
-    image: klutchell/dind:armhf-1.1.2
+      - 'dnscrypt_config:/config'
     ports:
-      - '22:22/tcp'
-    volumes:
-      - 'dind_home:/home/dind'
-    privileged: true
+      - '5053:5053/udp'
